@@ -32,7 +32,7 @@ class BaseMixin(LoginRequiredMixin, View):
 
             if search.favorite:
                 fav = Favorites.objects.filter(user=request.user)
-                orders_fav = fav.values_list('order__orderid', flat=True)
+                orders_fav = fav.values_list("order__orderid", flat=True)
                 objects = objects.filter(orderid__in=orders_fav)
 
             objects = self.filter_by_manager(request, objects)
@@ -48,10 +48,7 @@ class BaseMixin(LoginRequiredMixin, View):
                 )
             if search.customer:
                 objects = objects.filter(
-                    **{
-                        self.set_prefix()
-                        + "searchowners__icontains": search.customer
-                    }
+                    **{self.set_prefix() + "searchowners__icontains": search.customer}
                 )
 
             if request.GET.get("action") == "count":
@@ -96,20 +93,27 @@ class OrderList(BaseMixin):
         favorite = []
         task = []
 
-        orders = orders.select_related(
-            'customer').prefetch_related('comments', 'orderresponsible_set', 'ordercomresponsible_set')
+        orders = orders.select_related("customer").prefetch_related(
+            "comments", "orderresponsible_set", "ordercomresponsible_set"
+        )
         for order in orders:
             resp.append(Orderresponsible.objects.filter(orderid=order.orderid))
-            customers_list = CustomersList.objects.filter(orderid=order.orderid).order_by(
-                "customerid__title"
-            )
+            customers_list = CustomersList.objects.filter(
+                orderid=order.orderid
+            ).order_by("customerid__title")
             customers.append(customers_list)
             last_comment = Comments.objects.filter(orderid=order).first()
             last_contact.append(last_comment.createdat if last_comment else "")
-            task_count = Comments.objects.filter(
-                orderid=order).filter(istask=1).exclude(complete=1).count()
+            task_count = (
+                Comments.objects.filter(orderid=order)
+                .filter(istask=1)
+                .exclude(complete=1)
+                .count()
+            )
             task.append(task_count)
-            is_favorite = Favorites.objects.filter(user=request.user, order=order).exists()
+            is_favorite = Favorites.objects.filter(
+                user=request.user, order=order
+            ).exists()
             favorite.append(is_favorite)
 
         context = {
@@ -122,9 +126,13 @@ class OrderList(BaseMixin):
         search = request.user.search
         if search.manager:
             order_res = Ordercomresponsible.objects.filter(
-                user=search.manager).values_list("orderid__orderid", flat=True)
-            res = Orderresponsible.objects.filter(
-                user=search.manager).exclude(orderid__orderid__in=order_res).values_list("orderid__orderid", flat=True)
+                user=search.manager
+            ).values_list("orderid__orderid", flat=True)
+            res = (
+                Orderresponsible.objects.filter(user=search.manager)
+                .exclude(orderid__orderid__in=order_res)
+                .values_list("orderid__orderid", flat=True)
+            )
             objects = objects.filter(orderid__in=res)
         return objects
 
